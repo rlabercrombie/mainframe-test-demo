@@ -24,37 +24,8 @@
        *> run live program
        *>      ./demo_writer
 
-       *> for running as part of end-to-end tests
-       *>      ./demo_writer TESTENDTOEND 
-       
-       *> for running only unit tests
-       *>      ./demo_writer TESTUNIT 
-       
-       *> for running only integration tests
-       *>      ./demo_writer TESTINTEGRATION
-       
-       *> for running unit and integration tests 
-       *>      ./demo_writer TEST
-       *>      ./demo_writer TESTALL
-       
        *> ===========================================================
 
-
-       
-       *> working storage for arguments
-       *> example argument usage may be:
-       *> for running unit and integration tests
-       *>      ./demo_writer TEST
-       *>      ./demo_writer TESTALL
-       *> for running only unit tests
-       *>      ./demo_writer TESTUNIT 
-       *> for running only integration tests
-       *>      ./demo_writer TESTINTEGRATION
-       01 WS_PARAMS.
-           05 WS_PARAMS_TEST_SWITCH        PIC X(04) VALUE 'N   '.
-               88 WS_PARAMS_TEST               VALUE 'TEST'.        
-           05 WS_PARAMS_TEST_NAME          PIC X(25) VALUE 'ALL'.    
-       
        *> end of file definitions
        01 WS_EOF                           PIC X(1) VALUE 'N'. 
            88 WS_EOF_FALSE                     VALUE 'N'.
@@ -69,13 +40,6 @@
            88 WS_GOOD_STRING_FALSE                     VALUE 'F'.
            88 WS_GOOD_STRING_TRUE                      VALUE 'T'.
 
-        01 WS_TEST_TABLE_SWITCH                    PIC X(1) VALUE 'F'. 
-           88 WS_TEST_TABLE                           VALUE 'T'.
-
-       *> test counters
-       01 WS_TEST_PASSED                           PIC 9(2) VALUE ZERO.
-       01 WS_TEST_FAILED                            PIC 9(2) VALUE ZERO.
-       
        *> ocesql declarations
        01  DB_TABLENAME                PIC X(15).
        
@@ -99,12 +63,6 @@ OCESQL*EXEC SQL BEGIN DECLARE SECTION END-EXEC.
        01  DB_RECORD_COUNT         PIC 9(04).
        01  DB_RECORDS.
            05  DB_DATE             PIC X(10).
-       *>     05  DB_DATE.
-       *>             10 DB_DATE_YYYY PIC X(04).
-       *>             10 DB_DASH_1       PIC X(01) VALUE '-'.
-       *>             10 DB_DATE_MM   PIC X(02).
-       *>             10 DB_DASH_2       PIC X(01) VALUE '-'.
-       *>             10 DB_DATE_DD   PIC X(02).
            05  DB_STRING           PIC X(12).
                
 OCESQL*EXEC SQL END DECLARE SECTION END-EXEC.
@@ -125,46 +83,19 @@ OCESQL  &  "t FROM demo_table".
 OCESQL     02  FILLER PIC X(1) VALUE X"00".
 OCESQL*
 OCESQL 01  SQ0003.
-OCESQL     02  FILLER PIC X(022) VALUE "DELETE FROM demo_table".
-OCESQL     02  FILLER PIC X(1) VALUE X"00".
-OCESQL*
-OCESQL 01  SQ0004.
 OCESQL     02  FILLER PIC X(014) VALUE "DISCONNECT ALL".
 OCESQL     02  FILLER PIC X(1) VALUE X"00".
 OCESQL*
        PROCEDURE DIVISION.
        
-       *> MAIN/TEST PROGRAM LOGIC STARTUP
-       *> If program is called with the TEST argument, then we 
-       *> will use test database connection info instead of a  
-       *> database containing live data
-           
-           ACCEPT WS_PARAMS FROM COMMAND-LINE.
-           IF WS_PARAMS_TEST
-               MOVE "postgres@db-test:5432" TO DBNAME
-               MOVE "postgres"         TO USERNAME
-               MOVE "postgres"         TO PASSWD
-           ELSE
-               MOVE "postgres@db:5432" TO DBNAME
-               MOVE "postgres"         TO USERNAME
-               MOVE "postgres"         TO PASSWD
-           END-IF.
+           MOVE "postgres@db:5432" TO DBNAME
+           MOVE "postgres"         TO USERNAME
+           MOVE "postgres"         TO PASSWD
 
-        *> A normal run and an end-to-end test will act functionally 
-        *> the same except for using live vs test databases whereas
-        *> integration tests and unit tests have their own workflows
 
-           IF NOT WS_PARAMS_TEST OR 
-           (WS_PARAMS_TEST AND WS_PARAMS_TEST_NAME = "ENDTOEND")
+           PERFORM B1000_GENERAL_LOGIC
 
-               PERFORM B1000_GENERAL_LOGIC
-           ELSE
-
-               PERFORM B9000_TEST
-           END-IF.
-       
            STOP RUN.
-       
        
        B1000_GENERAL_LOGIC.
            *> SETUP 
@@ -319,18 +250,6 @@ OCESQL     END-CALL
        
            EXIT.
 
-       B3600_CLEAR_TEST_TABLE.
-OCESQL*    EXEC SQL 
-OCESQL*         DELETE FROM demo_table
-OCESQL*    END-EXEC.
-OCESQL     CALL "OCESQLExec" USING
-OCESQL          BY REFERENCE SQLCA
-OCESQL          BY REFERENCE SQ0003
-OCESQL     END-CALL.
-
-           IF  SQLSTATE NOT = ZERO PERFORM B8000_SQL_ERROR STOP RUN.
-           EXIT.
-       
        B3900_DISCONNECT.
 OCESQL*    EXEC SQL COMMIT WORK END-EXEC.
 OCESQL     CALL "OCESQLStartSQL"
@@ -441,148 +360,5 @@ OCESQL     END-CALL
           MOVE 1 TO RETURN-CODE.
 
           EXIT.
-       
-       *> TESTS
-       B9000_TEST.
-           IF WS_PARAMS_TEST_NAME = 'ALL'
-               PERFORM B9100_UNIT_TESTS
-               PERFORM B9200_INTEGRATION_TESTS
-           ELSE
-               IF WS_PARAMS_TEST_NAME = 'UNIT'
-                   PERFORM B9100_UNIT_TESTS
-               ELSE IF WS_PARAMS_TEST_NAME = 'INTEGRATION'
-                   PERFORM B9200_INTEGRATION_TESTS
-               END-IF
-           END-IF.
-       
-       
-           DISPLAY "PASSING TESTS: ", WS_TEST_PASSED.
-           DISPLAY "FAILING TESTS: ", WS_TEST_FAILED.
-
-           IF WS_TEST_FAILED > 0
-               MOVE 1 TO RETURN-CODE
-           END-IF.
-           
-           EXIT.
-       
-       B9100_UNIT_TESTS.
-           DISPLAY 'RUNNING UNIT TESTS!'
-       
-           PERFORM B9001_DEMO_DATE_IS_NUMERIC_DATE
-           PERFORM B9002_DEMO_STRING_ISNT_EMPTY
-           PERFORM B9003_DEMO_STRING_SWITCH_TO_Z
-       
-           EXIT.
-       
-       B9200_INTEGRATION_TESTS.
-           DISPLAY 'RUNNING INTEGRATION TESTS!'           
-       
-           DISPLAY "we are connecting to a test table with the same "
-           DISPLAY "schema to test inserts by immediately performing "
-           DISPLAY "a read to after an insert to verify it exists "
-           DISPLAY "in the database "
-           
-           DISPLAY "CONNECT TO DB..."
-           PERFORM B3100_CONNECT
-
-           DISPLAY 'CLEARING OUT EXISTING DATA IN THE TEST TABLE...'
-           PERFORM B3600_CLEAR_TEST_TABLE
-
-           MOVE '20220516' TO DEMO_DATE
-           MOVE '16A001' TO DEMO_STRING
-           DISPLAY 'INSERTING A RECORD: ', DEMO_REC
-           PERFORM B3400_INSERT_ROW
-
-           MOVE SPACES TO DEMO_REC
-           DISPLAY 'RETRIEVING THE RECORD: '
-           PERFORM B3500_FETCH_ROWS_INIT
-           PERFORM B3501_FETCH_ROWS_READ_NEXT 
-           DISPLAY 'RETRIEVED A RECORD: ', DEMO_REC
-
-           DISPLAY 'TESTING EQUALITY...'
-           IF DEMO_DATE = '20220516'
-             AND DEMO_STRING = '16A001'
-
-                PERFORM B9901_TEST_PASSED
-           ELSE 
-                PERFORM B9902_TEST_FAILED
-           END-IF
-
-           DISPLAY "DISCONNECTING"
-
-           PERFORM B3900_DISCONNECT
-
-           EXIT.
-       
-       B9001_DEMO_DATE_IS_NUMERIC_DATE.
-           DISPLAY "FIRST 8 CHARACTERS IS NUMERIC "
-           DISPLAY "SETS WS_GOOD_DATE TO TRUE".
-           MOVE SPACES TO DEMO_REC
-           MOVE '20220101' TO DEMO_DATE
-           PERFORM B4200_DATE_CHECK
-           IF WS_GOOD_DATE_TRUE 
-               PERFORM B9901_TEST_PASSED
-           ELSE 
-               PERFORM B9902_TEST_FAILED
-           END-IF
-       
-           DISPLAY "FIRST 8 CHARACTERS IS NOT NUMERIC "
-           DISPLAY "SETS WS_GOOD_DATE TO FALSE".
-           MOVE SPACES TO DEMO_REC
-           MOVE 'A' TO DEMO_DATE
-           PERFORM B4200_DATE_CHECK
-           IF WS_GOOD_DATE_FALSE 
-               PERFORM B9901_TEST_PASSED
-           ELSE 
-               PERFORM B9902_TEST_FAILED
-           END-IF
-           EXIT.
-       
-       B9002_DEMO_STRING_ISNT_EMPTY.
-           DISPLAY "EMPTY STRING SETS WS_GOOD_STRING TO FALSE".
-           MOVE SPACES TO DEMO_REC
-           PERFORM B4300_STRING_CHECK
-           IF WS_GOOD_STRING_FALSE 
-               PERFORM B9901_TEST_PASSED
-           ELSE 
-               PERFORM B9902_TEST_FAILED
-           END-IF
-       
-           DISPLAY "NONEMPTY STRING SETS WS_GOOD_STRING TO TRUE".
-           MOVE SPACES TO DEMO_REC
-           MOVE '123456' TO DEMO_STRING
-           PERFORM B4300_STRING_CHECK
-           IF WS_GOOD_STRING_TRUE
-               PERFORM B9901_TEST_PASSED
-           ELSE 
-               PERFORM B9902_TEST_FAILED
-           END-IF
-       
-           EXIT.
-       
-       B9003_DEMO_STRING_SWITCH_TO_Z.
-           DISPLAY "STRING SWITCH GETS CHANGED".
-           MOVE SPACES TO DEMO_REC
-           
-           PERFORM B4301_UPDATE_STRING_SWITCH.
-           IF DEMO_STRING_SWITCH = 'Z' 
-               PERFORM B9901_TEST_PASSED
-           ELSE 
-               PERFORM B9902_TEST_FAILED
-           END-IF
-       
-           EXIT.
-       
-       B9901_TEST_PASSED.
-           DISPLAY "TEST PASSED"
-           ADD 1 TO WS_TEST_PASSED
-           DISPLAY "------"
-           EXIT.
-       
-       B9902_TEST_FAILED.
-           DISPLAY "TEST FAILED"
-           ADD 1 TO WS_TEST_FAILED
-           DISPLAY "------"
-           EXIT.
-           EXIT.
-           EXIT.
+          EXIT.
+          EXIT.

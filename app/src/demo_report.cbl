@@ -21,33 +21,9 @@
 
        *> run live program
        *>      ./demo_report
-
-       *> for running as part of end-to-end tests
-       *>      ./demo_report TESTENDTOEND 
-       
-       *> for running only unit tests
-       *>      ./demo_report TESTUNIT 
-       
-       *> for running only integration tests
-       *>      ./demo_report TESTINTEGRATION
-       
-       *> for running unit and integration tests 
-       *>      ./demo_report TEST
-       *>      ./demo_report TESTALL
        
        *> ===========================================================
-       01 WS_PARAMS.
-           05 WS_PARAMS_TEST_SWITCH        PIC X(04) VALUE 'N   '.
-               88 WS_PARAMS_TEST               VALUE 'TEST'.        
-           05 WS_PARAMS_TEST_NAME          PIC X(25) VALUE 'ALL'. 
 
-       *> test counters
-       01 WS_TEST_PASSED                           PIC 9(2) VALUE ZERO.
-       01 WS_TEST_FAILED                            PIC 9(2) VALUE ZERO.
-
-       01 WS_TEST_EXPECTED_DATE                  PIC X(10).   
-
-       *> test counters
        01 WS_CURRENT_DATE_DATA.
          05  WS_CURRENT_DATE.
              10  WS_CURRENT_YEAR         PIC 9(04).
@@ -121,37 +97,15 @@
 
        PROCEDURE DIVISION.
 
-       *> MAIN/TEST PROGRAM LOGIC STARTUP
-       *> If program is called with the TEST argument, then we 
-       *> will use test database connection info instead of a  
-       *> database containing live data
-           
-           ACCEPT WS_PARAMS FROM COMMAND-LINE.
-           IF WS_PARAMS_TEST
-               MOVE "postgres@db-test:5432" TO DBNAME
-               MOVE "postgres"         TO USERNAME
-               MOVE "postgres"         TO PASSWD
-           ELSE
-               MOVE "postgres@db:5432" TO DBNAME
-               MOVE "postgres"         TO USERNAME
-               MOVE "postgres"         TO PASSWD
-           END-IF.
+           MOVE "postgres@db:5432" TO DBNAME
+           MOVE "postgres"         TO USERNAME
+           MOVE "postgres"         TO PASSWD
+
 
            MOVE FUNCTION CURRENT-DATE TO WS_CURRENT_DATE_DATA.
 
-        *> A normal run and an end-to-end test will act functionally 
-        *> the same except for using live vs test databases whereas
-        *> integration tests and unit tests have their own workflows
+           PERFORM B1000_GENERAL_LOGIC
 
-           IF NOT WS_PARAMS_TEST OR 
-           (WS_PARAMS_TEST AND WS_PARAMS_TEST_NAME = "ENDTOEND")
-
-               PERFORM B1000_GENERAL_LOGIC
-           ELSE
-
-               PERFORM B9000_TEST
-           END-IF.
-       
            STOP RUN.
 
        B1000_GENERAL_LOGIC.
@@ -255,14 +209,6 @@
 
            END-IF
        
-           EXIT.
-
-       B3600_CLEAR_TEST_TABLE.
-           EXEC SQL 
-                DELETE FROM demo_table
-           END-EXEC.
-
-           IF  SQLSTATE NOT = ZERO PERFORM B8000_SQL_ERROR STOP RUN.
            EXIT.
        
        B3900_DISCONNECT.
@@ -377,148 +323,3 @@
 
 
           EXIT.
-
-
-       *> TESTS
-       B9000_TEST.
-           IF WS_PARAMS_TEST_NAME = 'ALL'
-               PERFORM B9100_UNIT_TESTS
-               PERFORM B9200_INTEGRATION_TESTS
-           ELSE
-               IF WS_PARAMS_TEST_NAME = 'UNIT'
-                   PERFORM B9100_UNIT_TESTS
-               ELSE IF WS_PARAMS_TEST_NAME = 'INTEGRATION'
-                   PERFORM B9200_INTEGRATION_TESTS
-               END-IF
-           END-IF.
-       
-       
-           DISPLAY "PASSING TESTS: ", WS_TEST_PASSED.
-           DISPLAY "FAILING TESTS: ", WS_TEST_FAILED.
-
-           IF WS_TEST_FAILED > 0
-               MOVE 1 TO RETURN-CODE
-           END-IF.
-           
-           EXIT.
-
-       B9100_UNIT_TESTS.
-           DISPLAY 'RUNNING UNIT TESTS!'
-
-           PERFORM B9101_CORRECTLY_CREATE_REPORT_RECORD.
-           PERFORM B9102_CORRECTLY_SET_SUMMARY_COUNT.
-           *> CORRECTLY CREATES REPORT LINE FROM SAMPLE DB QUERY
-           *>        TEST WITH FULL SUMMARY LINE 
-           *>       05/20/2022  -  Z  - 001
-           *> CORRECTLY CREATES SUMMARY LINE FROM SAMPLE COUNT
-       
-           EXIT.
-
-       B9101_CORRECTLY_CREATE_REPORT_RECORD.
-           DISPLAY 'CORRECTLY CREATE REPORT RECORD'.
-
-           MOVE "12" TO DEMO_DATE_MM.
-           MOVE "01" TO DEMO_DATE_DD.
-           MOVE "2020" TO DEMO_DATE_YYYY.
-           MOVE "Z" TO DEMO_STRING_SWITCH.
-           MOVE "001" TO DEMO_STRING_COUNTER.
-           PERFORM B5101_CREATE_RPT_REC_FROM_DEMO_DATA.
-
-           DISPLAY "EXPECTED: ",
-               "12/01/2020  -  Z  -  001".
-
-           DISPLAY "ACTUAL:   ", WS_RPT_DATA.
-
-           IF WS_RPT_DATA = "12/01/2020  -  Z  -  001"
-               PERFORM B9901_TEST_PASSED
-           ELSE
-               PERFORM B9902_TEST_FAILED
-           EXIT.
-
-       B9102_CORRECTLY_SET_SUMMARY_COUNT.
-           DISPLAY 'CORRECTLY CREATE REPORT SUMMARY LINE'.
-
-           MOVE "00001" TO WS_COUNTER.
-           PERFORM B5101_CREATE_SUMMARY_LINE.
-
-           DISPLAY "EXPECTED: ",
-               "00001".
-
-           DISPLAY "ACTUAL:   ", WS_RPT_SUMMARY_COUNT.
-
-           IF WS_RPT_SUMMARY_COUNT = "00001"
-               PERFORM B9901_TEST_PASSED
-           ELSE
-               PERFORM B9902_TEST_FAILED
-           EXIT.
-
-           EXIT.
-
-       B9200_INTEGRATION_TESTS.
-           DISPLAY 'RUNNING INTEGRATION TESTS!'
-              
-           DISPLAY "we are connecting to a test table with the same "
-           DISPLAY "schema to insert some test data and verify it "
-           DISPLAY "translates correctly into a report line"
-           
-           DISPLAY "CONNECT TO DB..."
-           PERFORM B3100_CONNECT
-
-           DISPLAY 'CLEARING OUT EXISTING DATA IN THE TEST TABLE...'
-           PERFORM B3600_CLEAR_TEST_TABLE
-
-           MOVE WS_CURRENT_DATE TO DEMO_DATE
-           MOVE '16Z001' TO DEMO_STRING
-           DISPLAY 'INSERTING A RECORD: ', DEMO_REC
-           PERFORM B3400_INSERT_ROW
-
-           MOVE SPACES TO DEMO_REC
-           DISPLAY 'RETRIEVING THE RECORD: '
-           PERFORM B3500_FETCH_ROWS_INIT
-           PERFORM B3501_FETCH_ROWS_READ_NEXT 
-           DISPLAY 'RETRIEVED A RECORD: ', DEMO_REC
-
-           DISPLAY 'TESTING REPORT LINE...'
-           PERFORM B5101_CREATE_RPT_REC_FROM_DEMO_DATA
-
-            STRING WS_CURRENT_MONTH DELIMITED BY SIZE,
-                '/' DELIMITED BY SIZE,
-                WS_CURRENT_DAY DELIMITED BY SIZE,
-                '/' DELIMITED BY SIZE,
-                WS_CURRENT_YEAR DELIMITED BY SIZE 
-            INTO WS_TEST_EXPECTED_DATE
-
-            DISPLAY "EXPECTED: ", WS_TEST_EXPECTED_DATE
-            DISPLAY "ACTUAL:   ", WS_RPT_DATA_DATE
-
-           IF WS_RPT_DATA_DATE = WS_TEST_EXPECTED_DATE
-             AND WS_RPT_DATA_SWITCH = 'Z'
-             AND WS_RPT_DATA_COUNTER = '001'
-
-                PERFORM B9901_TEST_PASSED
-           ELSE 
-                PERFORM B9902_TEST_FAILED
-           END-IF
-
-           DISPLAY 'TESTING COUNTER...'
-           DISPLAY "EXPECTING: 1".
-           DISPLAY "ACTUAL:    ", WS_COUNTER.
-           IF WS_COUNTER = 1
-                PERFORM B9901_TEST_PASSED
-           ELSE 
-                PERFORM B9902_TEST_FAILED
-           END-IF
-
-           EXIT.
-
-       B9901_TEST_PASSED.
-           DISPLAY "TEST PASSED"
-           ADD 1 TO WS_TEST_PASSED
-           DISPLAY "------"
-           EXIT.
-       
-       B9902_TEST_FAILED.
-           DISPLAY "TEST FAILED"
-           ADD 1 TO WS_TEST_FAILED
-           DISPLAY "------"
-           EXIT.

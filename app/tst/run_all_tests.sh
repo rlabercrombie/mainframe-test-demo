@@ -1,3 +1,5 @@
+yest=$(date --date="yesterday" +"%Y%m%d")
+
 echo "running demo_writer unit tests"
 ../exe/demo_writer TESTUNIT
 if [ $? -ne 0 ]; then
@@ -7,7 +9,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "running demo_report unit tests"
-../exe/demo_report TESTUNIT
+../exe/demo_report $yest TESTUNIT
 if [ $? -ne 0 ]; then
 	echo "TEST FAILED - demo_report unit test"
 	echo "review output above to see why..."
@@ -23,7 +25,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "running demo_report integration tests"
-../exe/demo_report TESTINTEGRATION
+../exe/demo_report $yest TESTINTEGRATION
 if [ $? -ne 0 ]; then
 	echo "TEST FAILED - demo_report integration test"
 	echo "review output above to see why..."

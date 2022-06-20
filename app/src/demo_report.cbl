@@ -20,24 +20,28 @@
        *> example argument usage:
 
        *> run live program
-       *>      ./demo_report
+       *>      ./demo_report YYYYMMDD
 
        *> for running as part of end-to-end tests
-       *>      ./demo_report TESTENDTOEND 
+       *>      ./demo_report YYYYMMDD TESTENDTOEND 
        
        *> for running only unit tests
-       *>      ./demo_report TESTUNIT 
+       *>      ./demo_report YYYYMMDD TESTUNIT 
        
        *> for running only integration tests
-       *>      ./demo_report TESTINTEGRATION
+       *>      ./demo_report YYYYMMDD TESTINTEGRATION
        
        *> for running unit and integration tests 
-       *>      ./demo_report TEST
-       *>      ./demo_report TESTALL
+       *>      ./demo_report YYYYMMDD TEST
+       *>      ./demo_report YYYYMMDD TESTALL
 
        *> ===========================================================
 
        01 WS_PARAMS.
+           05 WS_PARAMS_DATE.
+             10  WS_PARAMS_YEAR            PIC 9(04).
+             10  WS_PARAMS_MONTH           PIC 9(02).
+             10  WS_PARAMS_DAY             PIC 9(02).
            05 WS_PARAMS_TEST_SWITCH        PIC X(04) VALUE 'N   '.
                88 WS_PARAMS_TEST               VALUE 'TEST'.        
            05 WS_PARAMS_TEST_NAME          PIC X(25) VALUE 'ALL'. 
@@ -209,11 +213,11 @@
        
        B3500_FETCH_ROWS_INIT.
 
-            STRING WS_CURRENT_YEAR DELIMITED BY SIZE,
+            STRING WS_PARAMS_YEAR DELIMITED BY SIZE,
                 '-' DELIMITED BY SIZE,
-                WS_CURRENT_MONTH DELIMITED BY SIZE,
+                WS_PARAMS_MONTH DELIMITED BY SIZE,
                 '-' DELIMITED BY SIZE,
-                WS_CURRENT_DAY DELIMITED BY SIZE 
+                WS_PARAMS_DAY DELIMITED BY SIZE 
             INTO DB_DATE
             
             *> DECLARE CURSOR

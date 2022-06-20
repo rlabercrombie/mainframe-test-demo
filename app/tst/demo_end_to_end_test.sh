@@ -14,7 +14,8 @@ if [ $? -ne 0 ]; then
 fi
 
 # Run the demo_report application
-../exe/demo_report TESTENDTOEND
+yest=$(date --date="yesterday" +"%Y%m%d")
+../exe/demo_report $yest TESTENDTOEND
 if [ $? -ne 0 ]; then
 	echo "failed to run demo_report..."
 	exit 1;

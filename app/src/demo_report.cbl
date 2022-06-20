@@ -20,23 +20,29 @@
        *> example argument usage:
 
        *> run live program
-       *>      ./demo_report
+       *>      ./demo_report YYYYMMDD
 
        *> for running as part of end-to-end tests
-       *>      ./demo_report TESTENDTOEND 
+       *>      ./demo_report YYYYMMDD TESTENDTOEND 
        
        *> for running only unit tests
-       *>      ./demo_report TESTUNIT 
+       *>      ./demo_report YYYYMMDD TESTUNIT 
        
        *> for running only integration tests
-       *>      ./demo_report TESTINTEGRATION
+       *>      ./demo_report YYYYMMDD TESTINTEGRATION
        
        *> for running unit and integration tests 
-       *>      ./demo_report TEST
-       *>      ./demo_report TESTALL
-       
+       *>      ./demo_report YYYYMMDD TEST
+       *>      ./demo_report YYYYMMDD TESTALL
+
        *> ===========================================================
+
        01 WS_PARAMS.
+           05 WS_PARAMS_DATE.
+             10  WS_PARAMS_YEAR            PIC 9(04).
+             10  WS_PARAMS_MONTH           PIC 9(02).
+             10  WS_PARAMS_DAY             PIC 9(02).
+           05 FILLER                       PIC X(01) VALUE SPACE.
            05 WS_PARAMS_TEST_SWITCH        PIC X(04) VALUE 'N   '.
                88 WS_PARAMS_TEST               VALUE 'TEST'.        
            05 WS_PARAMS_TEST_NAME          PIC X(25) VALUE 'ALL'. 
@@ -46,18 +52,6 @@
        01 WS_TEST_FAILED                            PIC 9(2) VALUE ZERO.
 
        01 WS_TEST_EXPECTED_DATE                  PIC X(10).   
-
-       *> test counters
-       01 WS_CURRENT_DATE_DATA.
-         05  WS_CURRENT_DATE.
-             10  WS_CURRENT_YEAR         PIC 9(04).
-             10  WS_CURRENT_MONTH        PIC 9(02).
-             10  WS_CURRENT_DAY          PIC 9(02).
-         05  WS_CURRENT_TIME.
-             10  WS_CURRENT_HOURS        PIC 9(02).
-             10  WS_CURRENT_MINUTE       PIC 9(02).
-             10  WS_CURRENT_SECOND       PIC 9(02).
-             10  WS_CURRENT_MILLISECONDS PIC 9(02).
 
        01 WS_COUNTER                     PIC 9(5) VALUE ZERO.
 
@@ -137,8 +131,6 @@
                MOVE "postgres"         TO PASSWD
            END-IF.
 
-           MOVE FUNCTION CURRENT-DATE TO WS_CURRENT_DATE_DATA.
-
         *> A normal run and an end-to-end test will act functionally 
         *> the same except for using live vs test databases whereas
         *> integration tests and unit tests have their own workflows
@@ -152,6 +144,8 @@
                PERFORM B9000_TEST
            END-IF.
        
+           STOP RUN.
+
            STOP RUN.
 
        B1000_GENERAL_LOGIC.
@@ -207,11 +201,11 @@
        
        B3500_FETCH_ROWS_INIT.
 
-            STRING WS_CURRENT_YEAR DELIMITED BY SIZE,
+            STRING WS_PARAMS_YEAR DELIMITED BY SIZE,
                 '-' DELIMITED BY SIZE,
-                WS_CURRENT_MONTH DELIMITED BY SIZE,
+                WS_PARAMS_MONTH DELIMITED BY SIZE,
                 '-' DELIMITED BY SIZE,
-                WS_CURRENT_DAY DELIMITED BY SIZE 
+                WS_PARAMS_DAY DELIMITED BY SIZE 
             INTO DB_DATE
             
             *> DECLARE CURSOR
@@ -256,7 +250,7 @@
            END-IF
        
            EXIT.
-
+       
        B3600_CLEAR_TEST_TABLE.
            EXEC SQL 
                 DELETE FROM demo_table
@@ -264,7 +258,7 @@
 
            IF  SQLSTATE NOT = ZERO PERFORM B8000_SQL_ERROR STOP RUN.
            EXIT.
-       
+
        B3900_DISCONNECT.
            EXEC SQL 
                CLOSE C1
@@ -303,11 +297,11 @@
        B5000_INITIALIZE_REPORT.
            WRITE DEMO_REPORT_RECORD FROM WS_RPT_TITLE.
 
-           STRING WS_CURRENT_YEAR DELIMITED BY SIZE,
+           STRING WS_PARAMS_YEAR DELIMITED BY SIZE,
                '-' DELIMITED BY SIZE,
-               WS_CURRENT_MONTH DELIMITED BY SIZE,
+               WS_PARAMS_MONTH DELIMITED BY SIZE,
                '-' DELIMITED BY SIZE,
-               WS_CURRENT_DAY DELIMITED BY SIZE 
+               WS_PARAMS_DAY DELIMITED BY SIZE 
            INTO WS_RPT_SUBTITLE_DATE.
 
            WRITE DEMO_REPORT_RECORD FROM WS_RPT_SUBTITLE.
@@ -378,7 +372,6 @@
 
           EXIT.
 
-
        *> TESTS
        B9000_TEST.
            IF WS_PARAMS_TEST_NAME = 'ALL'
@@ -407,10 +400,6 @@
 
            PERFORM B9101_CORRECTLY_CREATE_REPORT_RECORD.
            PERFORM B9102_CORRECTLY_SET_SUMMARY_COUNT.
-           *> CORRECTLY CREATES REPORT LINE FROM SAMPLE DB QUERY
-           *>        TEST WITH FULL SUMMARY LINE 
-           *>       05/20/2022  -  Z  - 001
-           *> CORRECTLY CREATES SUMMARY LINE FROM SAMPLE COUNT
        
            EXIT.
 
@@ -467,7 +456,10 @@
            DISPLAY 'CLEARING OUT EXISTING DATA IN THE TEST TABLE...'
            PERFORM B3600_CLEAR_TEST_TABLE
 
-           MOVE WS_CURRENT_DATE TO DEMO_DATE
+           STRING WS_PARAMS_YEAR DELIMITED BY SIZE,
+                WS_PARAMS_MONTH DELIMITED BY SIZE,
+                WS_PARAMS_DAY DELIMITED BY SIZE 
+           INTO DEMO_DATE
            MOVE '16Z001' TO DEMO_STRING
            DISPLAY 'INSERTING A RECORD: ', DEMO_REC
            PERFORM B3400_INSERT_ROW
@@ -481,11 +473,11 @@
            DISPLAY 'TESTING REPORT LINE...'
            PERFORM B5101_CREATE_RPT_REC_FROM_DEMO_DATA
 
-            STRING WS_CURRENT_MONTH DELIMITED BY SIZE,
+            STRING WS_PARAMS_MONTH DELIMITED BY SIZE,
                 '/' DELIMITED BY SIZE,
-                WS_CURRENT_DAY DELIMITED BY SIZE,
+                WS_PARAMS_DAY DELIMITED BY SIZE,
                 '/' DELIMITED BY SIZE,
-                WS_CURRENT_YEAR DELIMITED BY SIZE 
+                WS_PARAMS_YEAR DELIMITED BY SIZE 
             INTO WS_TEST_EXPECTED_DATE
 
             DISPLAY "EXPECTED: ", WS_TEST_EXPECTED_DATE

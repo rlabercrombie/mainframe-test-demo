@@ -39,22 +39,11 @@
        
        *> ===========================================================
 
-
-       
-       *> working storage for arguments
-       *> example argument usage may be:
-       *> for running unit and integration tests
-       *>      ./demo_writer TEST
-       *>      ./demo_writer TESTALL
-       *> for running only unit tests
-       *>      ./demo_writer TESTUNIT 
-       *> for running only integration tests
-       *>      ./demo_writer TESTINTEGRATION
        01 WS_PARAMS.
            05 WS_PARAMS_TEST_SWITCH        PIC X(04) VALUE 'N   '.
                88 WS_PARAMS_TEST               VALUE 'TEST'.        
            05 WS_PARAMS_TEST_NAME          PIC X(25) VALUE 'ALL'.    
-       
+
        *> end of file definitions
        01 WS_EOF                           PIC X(1) VALUE 'N'. 
            88 WS_EOF_FALSE                     VALUE 'N'.
@@ -69,13 +58,10 @@
            88 WS_GOOD_STRING_FALSE                     VALUE 'F'.
            88 WS_GOOD_STRING_TRUE                      VALUE 'T'.
 
-        01 WS_TEST_TABLE_SWITCH                    PIC X(1) VALUE 'F'. 
-           88 WS_TEST_TABLE                           VALUE 'T'.
-
        *> test counters
        01 WS_TEST_PASSED                           PIC 9(2) VALUE ZERO.
        01 WS_TEST_FAILED                            PIC 9(2) VALUE ZERO.
-       
+
        *> ocesql declarations
        01  DB_TABLENAME                PIC X(15).
        
@@ -99,12 +85,6 @@
        01  DB_RECORD_COUNT         PIC 9(04).
        01  DB_RECORDS.
            05  DB_DATE             PIC X(10).
-       *>     05  DB_DATE.
-       *>             10 DB_DATE_YYYY PIC X(04).
-       *>             10 DB_DASH_1       PIC X(01) VALUE '-'.
-       *>             10 DB_DATE_MM   PIC X(02).
-       *>             10 DB_DASH_2       PIC X(01) VALUE '-'.
-       *>             10 DB_DATE_DD   PIC X(02).
            05  DB_STRING           PIC X(12).
                
        EXEC SQL END DECLARE SECTION END-EXEC.
@@ -142,9 +122,8 @@
 
                PERFORM B9000_TEST
            END-IF.
-       
+
            STOP RUN.
-       
        
        B1000_GENERAL_LOGIC.
            *> SETUP 
@@ -247,7 +226,7 @@
 
            IF  SQLSTATE NOT = ZERO PERFORM B8000_SQL_ERROR STOP RUN.
            EXIT.
-       
+
        B3900_DISCONNECT.
            EXEC SQL COMMIT WORK END-EXEC.
 
@@ -334,7 +313,7 @@
           MOVE 1 TO RETURN-CODE.
 
           EXIT.
-       
+
        *> TESTS
        B9000_TEST.
            IF WS_PARAMS_TEST_NAME = 'ALL'

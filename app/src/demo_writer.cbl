@@ -24,7 +24,15 @@
        *> run live program
        *>      ./demo_writer
 
+       *> for running as part of end-to-end tests
+       *>      ./demo_writer TESTENDTOEND 
+
        *> ===========================================================
+
+       01 WS_PARAMS.
+           05 WS_PARAMS_TEST_SWITCH        PIC X(04) VALUE 'N   '.
+               88 WS_PARAMS_TEST               VALUE 'TEST'.        
+           05 WS_PARAMS_TEST_NAME          PIC X(25) VALUE 'ALL'.    
 
        *> end of file definitions
        01 WS_EOF                           PIC X(1) VALUE 'N'. 
@@ -72,9 +80,21 @@
        
        PROCEDURE DIVISION.
        
-           MOVE "postgres@db:5432" TO DBNAME
-           MOVE "postgres"         TO USERNAME
-           MOVE "postgres"         TO PASSWD
+       *> MAIN/TEST PROGRAM LOGIC STARTUP
+       *> If program is called with the TEST argument, then we 
+       *> will use test database connection info instead of a  
+       *> database containing live data
+           
+           ACCEPT WS_PARAMS FROM COMMAND-LINE.
+           IF WS_PARAMS_TEST
+               MOVE "postgres@db-test:5432" TO DBNAME
+               MOVE "postgres"         TO USERNAME
+               MOVE "postgres"         TO PASSWD
+           ELSE
+               MOVE "postgres@db:5432" TO DBNAME
+               MOVE "postgres"         TO USERNAME
+               MOVE "postgres"         TO PASSWD
+           END-IF.
 
 
            PERFORM B1000_GENERAL_LOGIC
